@@ -8,7 +8,7 @@
 # CONFIGURATION
 Twitch_Username = 'Collectablecat'  # Twitch.TV username for the bot, must be a registered username!
 Twitch_Password = ''  # OAuth for above Twitch.TV account, http://www.twitchapps.com/tmi/
-Twitch_Channel = 'collectablecat'  # Twitch.TV channel to connect to
+Twitch_Channel = 'animaggus'  # Twitch.TV channel to connect to
 
 # NOW DON'T TOUCH ANYTHING ELSE, UNLESS YOU KNOW WHAT YOU'RE DOING
 
@@ -101,10 +101,11 @@ class Twitchy:
 		self.modHandlers.append( pluginFunction )
 
 	def handleIRCMessage(self, ircMessage):
+		print ircMessage
 		if ircMessage.find(' PRIVMSG '+ self.ircChan +' :') != -1:
-			user_type = ircMessage.split(":")[0].split(";")[5].split("=")[1].strip()
-			subscriber = bool(ircMessage.split(":")[0].split(";")[2].split("=")[1])
-			nick = ircMessage.split(":")[0].split(";")[1].split("=")[1]
+			user_type = ircMessage.split(" :")[0].split(";")[5].split("=")[1].strip()
+			subscriber = bool(ircMessage.split(" :")[0].split(";")[2].split("=")[1])
+			nick = ircMessage.split(" :")[0].split(";")[1].split("=")[1]
 			user = {"user-type":user_type,"subscriber":subscriber,"nick":nick}
 			if nick.lower() in self.ignoredUsers:
 				return
