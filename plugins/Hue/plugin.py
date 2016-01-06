@@ -58,7 +58,11 @@ class Hue(Device):
         for l in self.bridge.lights:
             l.transitiontime = 1
             if brightness:
-                l.brightness = brightness
+                if brightness == 0:
+                    l.on = False
+                else:
+                    l.on = True
+                    l.brightness = brightness
             if rgb:
                 if rgb == (0,0,0):
                     l.on = False
@@ -82,7 +86,7 @@ class Hue(Device):
     def _RGBtoXY(self,r, g, b):
         return self.chelper.getXYPointFromRGB(r, g, b)
 
-REQUIRED_VOTES = 1
+REQUIRED_VOTES = 2
 class HuePlugin(BasePlugin):
     def __init__(self, twitchy):
         super(HuePlugin, self).__init__(twitchy)
@@ -91,6 +95,7 @@ class HuePlugin(BasePlugin):
         self.registerCommand('2spoopy', self.flashVote)
         self.registerCommand('brighter', self.brighterVote)
         self.registerCommand('darker', self.darkerVote)
+        self.registerCommand('help', self.helpHandler)
         self.hue = Hue("192.168.1.211")
         self.votes = {}
         self.darkerVotes = {}
@@ -100,26 +105,28 @@ class HuePlugin(BasePlugin):
     def brighterVote(self,user,commandArg):
         if not user['nick'] in self.brighterVotes:
             self.brighterVotes[user['nick']] = 1
-        if len(self.brighterVotes) > 0:
+        if len(self.brighterVotes) > 5:
             self.sendMessage("The light has returned! Praise the sun!")
             current_brightness = self.hue.bridge.lights[2].brightness
             self.hue.set_color(brightness=min(254,current_brightness+50))
             self.brighterVotes = {}
             self.darkerVotes = {}
         else:
-            self.sendMessage("The sun draws nearer")
+            #self.sendMessage("The sun draws nearer")
+            pass
 
     def darkerVote(self,user,commandArg):
         if not user['nick'] in self.brighterVotes:
             self.darkerVotes[user['nick']] = 1
-        if len(self.darkerVotes) > 0:
+        if len(self.darkerVotes) > 5:
             self.sendMessage("Darkness falls across the land... well shit")
             current_brightness = self.hue.bridge.lights[2].brightness
             self.hue.set_color(brightness=max(0,current_brightness-50))
             self.darkerVotes = {}
             self.brighterVotes = {}
         else:
-            self.sendMessage("The darkness swells")
+            #self.sendMessage("The darkness swells")
+            pass
 
     def doLightning(self):
         old_colors = {}
@@ -154,12 +161,21 @@ class HuePlugin(BasePlugin):
     def flashVote(self,user,commandArg):
         if not user['nick'] in self.flashVotes:
             self.flashVotes[user['nick']] = 1
-        if len(self.flashVotes) > 0:
+        if len(self.flashVotes) >= 5:
             self.sendMessage("SHITTTTT")
             self.doLightning()
             self.flashVotes = {}
         else:
-            self.sendMessage("Your intent has been registered...")
+            #self.sendMessage("Your intent has been registered...")
+            pass
+
+    def helpHandler(self, user, commandArg):
+        if user["user-type"] == "mod":
+            self.sendMessage("Commands are :")
+            self.sendMessage("[!darker] , vote to make the room darker and more scary")
+            self.sendMessage("[!brighter] , vote to make the room brighter and less scary")
+            self.sendMessage("[!hue R G B] , vote to set current lighting color")
+            self.sendMessage("[!2spoopy] , vote to strike us with lightning")
 
     def hueHandler(self, user, commandArg):
         rgb = (int(commandArg[1]),int(commandArg[2]),int(commandArg[3]))
@@ -168,11 +184,12 @@ class HuePlugin(BasePlugin):
             self.hue.set_color(rgb)
             self.votes = {}
             return
+        return
         if rgb in self.votes:
-            if not nick in self.votes[rgb]:
-                self.votes[rgb].append(user)
+            if not user['nick'] in self.votes[rgb]:
+                self.votes[rgb].append(user['nick'])
         else:
-            self.votes[rgb] = [user]
+            self.votes[rgb] = [user['nick']]
         if len(self.votes[rgb]) >= REQUIRED_VOTES:
             self.sendMessage("We have enough votes! Lights changing color wooo!! 2spoopy4me!")
             self.hue.set_color(rgb)
