@@ -91,12 +91,15 @@ class Twitchy:
             if re.search('^!' + pluginDict['regex'], text, re.IGNORECASE):
                 handler = pluginDict['handler']
                 args = text.split(" ")
-                handler(user, args)
+                handler(user, args, twitch_msg)
 
         for pluginDict in self.triggers:
             if re.search('^' + pluginDict['regex'], text, re.IGNORECASE):
                 handler = pluginDict['handler']
-                handler(user, text)
+                handler(user, text, twitch_msg)
+
+    def send_message(self, message, channel):
+        self.twitch_chat.send_message(channel, message)
 
     def stop(self):
         self.twitch_chat.stop()
