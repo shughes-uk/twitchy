@@ -1,0 +1,5 @@
+twitch_username : "your_username"
+twitch_oauth : "oauth:yourkeyhere"
+twitch_channels :
+- "animaggus"
+- "collectablecat"
