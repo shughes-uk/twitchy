@@ -1,11 +1,15 @@
 import time
 import imp
 import os
-import traceback
 import re
 import inspect
 from plugins.BasePlugin import BasePlugin
 from twitchchat import twitch_chat
+import logging
+import argparse
+from yaml import load
+logger = logging.getLogger('twitchy')
+
 # Twitchy
 # An IRC bot designed for Twitch.TV streams
 #
@@ -13,26 +17,15 @@ from twitchchat import twitch_chat
 # It is released under the BSD license; the full license
 # available in the LICENSE file.
 
-# CONFIGURATION
-Twitch_Username = 'Collectablecat'  # Twitch.TV username for the bot, must be a registered username!
-Twitch_Password = 'nope'  # OAuth for above Twitch.TV account, http://www.twitchapps.com/tmi/
-Twitch_Channel = 'animaggus'  # Twitch.TV channel to connect to
-
-# NOW DON'T TOUCH ANYTHING ELSE, UNLESS YOU KNOW WHAT YOU'RE DOING
-
-# If you do want to improve the code, though, feel free.
-# I'd like if you then made a pull request on GitHub for everyone to
-# benefit from the improved code, but you aren't required to do so.
-
 
 class Twitchy:
 
-    def __init__(self):
+    def __init__(self, username, password, channels):
 
         self.connected = False
         # Plugin system loosely based on blog post by lkjoel
         # http://lkubuntu.wordpress.com/2012/10/02/writing-a-python-plugin-api/
-        self.twitch_chat = twitch_chat(Twitch_Username, Twitch_Password, [Twitch_Channel])
+        self.twitch_chat = twitch_chat(username, password, channels)
         self._pluginFolder = './plugins/'
         self._mainModule = 'plugin'
         self._plugins = []  # used for cleanup
@@ -62,22 +55,21 @@ class Twitchy:
             info = imp.find_module(self._mainModule, [location])
             potentialPlugins.append({"name": i, "info": info})
 
-        print("Found plugin classes:")
+        logger.info("Found plugin classes:")
         for i in potentialPlugins:
             try:
                 plugin = imp.load_module(self._mainModule, *i["info"])
                 pluginClasses = inspect.getmembers(plugin, inspect.isclass)
                 for className, classObj in pluginClasses:
-                    if className == "BasePlugin" or className in self.loadedPluginNames or not issubclass(classObj,
-                                                                                                          BasePlugin):
+                    if className == "BasePlugin" or className in self.loadedPluginNames or not issubclass(
+                            classObj, BasePlugin):
                         continue  # Exclude BasePlugin & any classes that are not a subclass of it
-                    print(className)
+                    logger.info(className)
                     pluginInstance = classObj(self)
                     self._plugins.append(pluginInstance)
                     self.loadedPluginNames.append(className)
             except:
-                print("Error loading plugin.")
-                print(traceback.format_exc())
+                logger.exception("Error loading plugin.")
 
     def registerCommand(self, command, pluginFunction):
         self.commands.append({'regex': command, 'handler': pluginFunction})
@@ -113,12 +105,48 @@ class Twitchy:
         # 'main'
 
 
+def get_config():
+    logger.info('Loading configuration from config.txt')
+    config = None
+    if os.path.isfile('config.txt'):
+        config = load(open('config.txt', 'r'))
+        required_settings = ['twitch_username', 'twitch_oauth', 'twitch_channels']
+        for setting in required_settings:
+            if setting not in config:
+                msg = '{} not present in config.txt, put it there! check config_example.txt!'.format(setting)
+                logger.critical(msg)
+                return None
+    else:
+        logger.critical('config.txt doesn\'t exist, please create it, refer to config_example.txt for reference')
+        return None
+    logger.info('Configuration loaded')
+    return config
+
+
 if __name__ == "__main__":
-    while True:
-        twitchy = Twitchy()
-        try:
-            twitchy.start()
-            while True:
-                time.sleep(0.2)
-        finally:
-            twitchy.stop()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-t", "--test", help="Subscribe to featured channels to aid testing", action="store_true")
+    parser.add_argument('-d',
+                        '--debug',
+                        help="Enable debugging statements",
+                        action="store_const",
+                        dest="loglevel",
+                        const=logging.DEBUG,
+                        default=logging.INFO,)
+    args = parser.parse_args()
+
+    logging.basicConfig(level=args.loglevel,
+                        format='%(asctime)s.%(msecs)d %(levelname)s %(name)s : %(message)s',
+                        datefmt='%H:%M:%S')
+    config = get_config()
+    if config:
+        while True:
+            twitchy = Twitchy()
+            try:
+                twitchy.start()
+                while True:
+                    time.sleep(0.2)
+            finally:
+                twitchy.stop()
+    else:
+        logging.critical("Failed to load configuration file.. exiting")
