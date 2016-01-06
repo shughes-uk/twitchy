@@ -37,6 +37,7 @@ class Twitchy:
         self.loadedPluginNames = []
         self.spamMessages = ['codes4free.net', 'g2a.com/r/', 'prizescode.net']
         self.twitch_chat.subscribeChatMessage(self.handleIRCMessage)
+        self.loadPlugins()
 
     def kill(self):
         for p in self._plugins:
@@ -84,7 +85,6 @@ class Twitchy:
         self.modHandlers.append(pluginFunction)
 
     def handleIRCMessage(self, twitch_msg):
-        print twitch_msg
         text = twitch_msg['message']
         user = twitch_msg['display-name'] or twitch_msg['username']
         for pluginDict in self.commands:
@@ -101,8 +101,6 @@ class Twitchy:
     def stop(self):
         self.twitch_chat.stop()
         self.kill()
-
-        # 'main'
 
 
 def get_config():
@@ -141,7 +139,7 @@ if __name__ == "__main__":
     config = get_config()
     if config:
         while True:
-            twitchy = Twitchy()
+            twitchy = Twitchy(config['twitch_username'], config['twitch_oauth'], config['twitch_channels'])
             try:
                 twitchy.start()
                 while True:
